@@ -1,0 +1,26 @@
+name: kick
+
+# Public on purpose. Scheduled workflows on the private trading repo never
+# start. This repo only asks that private workflow to begin a session.
+on:
+  schedule:
+    - cron: "5 14 * * 1-5"
+    - cron: "15 18 * * 1-5"
+  workflow_dispatch: {}
+
+jobs:
+  start:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start the paper session if it is not already running
+        env:
+          GH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          running=$(gh run list --repo antonsleibi4-sys/alpaca-trading-bot --workflow trade-session.yml --limit 5 --json status --jq '[.[] | select(.status=="in_progress" or .status=="queued")] | length')
+          if [ "$running" != "0" ]; then
+            echo "Session already running."
+            exit 0
+          fi
+          gh workflow run trade-session.yml --repo antonsleibi4-sys/alpaca-trading-bot --ref main
+          echo "Session started."
